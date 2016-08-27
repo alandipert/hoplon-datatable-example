@@ -1,0 +1,50 @@
+(page "index.html")
+
+(js/jQuery
+  #(.getScript js/jQuery "jquery.dataTables.min.js"))
+
+(defn trigger-on-select [selector update-fn]
+  (.on
+   (js/jQuery selector)
+   "click"
+   "tr"
+   (fn []
+     (this-as this
+       (.toggleClass
+        (js/jQuery this)
+        "active"))
+     (update-fn))))
+
+(defelem datatable [{:keys [name value tbl-config col-names col-keys click-fn] :as attrs}]
+  (let [elem-attrs (dissoc attrs :name :value :tbl-config :col-names :col-keys :click-fn)]
+    (with-let [elem (table elem-attrs
+                      (thead (tr (map th col-names))))]
+      (with-init!
+        (let [$elem (js/jQuery elem)
+              tbl   (.DataTable $elem)]
+          (when click-fn
+            (trigger-on-select (.children $elem "tbody") click-fn))
+          (cell=
+           (let [rows (map #(map get (repeat %) col-keys) value)]
+             (.clear tbl)
+             (-> tbl
+                 .-rows
+                 (.add (clj->js rows))
+                 .draw))))))))
+
+(defc people
+  [{:id 1 :name "Bob" :age 34}
+   {:id 2 :name "Joe" :age 93}
+   {:id 3 :name "Sally" :age 19}])
+
+(html
+  (head
+    (link :href "app.css" :rel "stylesheet")
+    (link :href "jquery.dataTables.min.css" :rel "stylesheet"))
+  (body
+    (datatable {:class "table table-condensed table-striped table-bordered"
+                :cellspacing "0"
+                :name "people"
+                :value people
+                :col-names ["Name" "Age"]
+                :col-keys [:name :age]})))
